@@ -1,6 +1,6 @@
 A few months ago I released ZMQ::FFI, zeromq bindings for Perl that use FFI::Raw instead of XS. There's been some interest, so I thought I would write a short post to announce the module beyond the zeromq mailing list.
 
-In a second post I'll discuss FFI::Raw itself, what it currently provides, as well as some advanced use cases that came up during the development of ZMQ::FFI. If reverse depends on metacpan is anything to go by, it seems many people aren't aware of this module. In fact, at the time of this writing ZMQ::FFI is the only module using it:
+In another post I'll discuss FFI::Raw itself, what it currently provides, as well as some advanced use cases that came up during the development of ZMQ::FFI. If reverse depends on metacpan is anything to go by, it seems many people aren't aware of this module. In fact, at the time of this writing ZMQ::FFI is the only module using it:
 
 <img alt="ffi-raw-reverse-depends.png" src="http://blogs.perl.org/users/dylan_cali/2014/01/19/ffi-raw-reverse-depends.png" width="599" height="128" class="mt-image-none" style="" />
 That's a shame, as it's a terrific module which finally makes FFI in Perl feasible. It effectively eliminates the need for XS in many cases, and it's sufficiently baked to be considered "production ready."
