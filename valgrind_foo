@@ -1,0 +1,10 @@
+#!/bin/bash
+
+LD_LIBRARY_PATH=/tmp \
+    valgrind \
+    --xml=yes \
+    --xml-file=/tmp/foo.xml \
+    --gen-suppressions=all \
+    --suppressions=perl.supp \
+    --leak-check=full \
+    perl foo.pl
