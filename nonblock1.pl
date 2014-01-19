@@ -33,7 +33,6 @@ my $w = AE::io $pull->get_fd, 0, sub {
             print '.';
         }
     }
-
 };
 
 my $t = AE::timer 0, 0, sub {
