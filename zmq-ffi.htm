@@ -185,7 +185,7 @@ Still, how we integrated with AnyEvent is the most important part:
     <li>In the watcher's callback we used the <code>has_pollin</code> method to guarantee we receive all the messages currently available on the socket</li>
 </ul>
 
-The second point is critical: By continuing to receive until <code>has_pollin</code> returns false, we ensure all outstanding zmq events on the socket have been exhausted. If we return control to the event loop without doing this the edge-triggered state of the zmq fd may not get reset. The consequence of leaving the zmq fd in an intermediate state is that it will not show as readable again, and your io callback will never fire.
+The second point is critical: By continuing to receive until <code>has_pollin</code> returns false, we ensure all outstanding zmq events on the socket have been exhausted. If we return control to the event loop without doing this the edge-triggered state of the zmq fd may not get reset. The consequence of leaving the fd in an intermediate state is that it will not show as readable again, and the io callback will never fire.
 
 After all of that let's quickly prove we're still version agnostic:
 
@@ -202,10 +202,13 @@ You may have noticed I never explicitly called close or destroy. This is because
 Likewise, I did no error checking. Error codes are checked for you, and if an error does occur ZMQ::FFI will raise an appropriate exception.
 
 
-I hope you've enjoyed this whirlwind introduction of ZMQ::FFI. Do let me know any feedback on the post or the module. I did not demo multipart messages or pub/sub, but you can find examples of these as well as more detailed documentation here:
+That wraps up this whirlwind tour of ZMQ::FFI. Do let me know any feedback on the post or the module. I did not demo multipart messages or pub/sub, but you can find examples of these as well as more detailed documentation here:
 
 <ul>
     <li><a href="https://github.com/calid/zmq-ffi">https://github.com/calid/zmq-ffi</a></li>
     <li><a href="https://metacpan.org/pod/ZMQ::FFI">https://metacpan.org/pod/ZMQ::FFI</a></li>
 </ul>
 
+In another post I'll delve into FFI::Raw and how I was able to use it to make ZMQ::FFI possible.
+
+Cheers!
