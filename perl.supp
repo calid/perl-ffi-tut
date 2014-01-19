@@ -1,0 +1,13 @@
+{
+   perl_alloc1
+   Memcheck:Leak
+   fun:*alloc
+   fun:Perl_*
+}
+
+{
+   perl_alloc2
+   Memcheck:Leak
+   fun:*alloc
+   fun:S_*
+}
