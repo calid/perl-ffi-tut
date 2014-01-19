@@ -1,28 +1,24 @@
-A few months ago I released zeromq bindings for Perl that use FFI::Raw insteadof XS. There's been some interest, so I thought I would write a short post toannounce the module beyond the zeromq mailing list. It will also give me achance to talk about FFI::Raw and what it brings to the table. If reversedepends on metacpan is anything to go by, it seems many people aren't aware ofor using this module. At the time of this writing ZMQ::FFI is the only modulethat depends on it:
+A few months ago I released ZMQ::FFI, zeromq bindings for Perl that use FFI::Raw instead of XS. There's been some interest, so I thought I would write a short post to announce the module beyond the zeromq mailing list.
+
+In a second post I'll discuss FFI::Raw itself, what it currently provides, as well as some advanced use cases that came up during the development of ZMQ::FFI. If reverse depends on metacpan is anything to go by, it seems many people aren't aware of this module. In fact, at the time of this writing ZMQ::FFI is the only module using it:
 
 <img alt="ffi-raw-reverse-depends.png" src="http://blogs.perl.org/users/dylan_cali/2014/01/19/ffi-raw-reverse-depends.png" width="599" height="128" class="mt-image-none" style="" />
+That's a shame, as it's a terrific module which finally makes FFI in Perl feasible. It effectively eliminates the need for XS in many cases, and it's sufficiently baked to be considered "production ready."
 
-That's a shame, as it's a terrific module which finally makes FFI in Perl feasible. It effectively eliminates the needfor XS in many cases.
+<big><big>ZMQ::FFI</big></big>
 
-<big>ZMQ::FFI</big>
-
-This post assumes existing knowledge of zeromq. If you have no idea what zeromq is, or what it's used for, here are somelinks to get you started:
-
-<ul>
-    <li>https://en.wikipedia.org/wiki/zeromq</li>
-    <li>http://zeromq.org/</li>
-</ul>
+This post assumes existing knowledge of zeromq. If you have no idea what zeromq is, or what it's used for, you can get started <a href="https://en.wikipedia.org/wiki/zeromq">here</a> and <a href="http://zeromq.org/">here</a>.
 
 The description for ZMQ::FFI is already pretty concise, so let's start with that:
 
-<blockquote>ZMQ::FFI exposes a high level, transparent, OO interface to zeromqindependent of the underlying libzmq version. Where semantics differ, it willdispatch to the appropriate backend for you. As it uses ffi, there is nodependency on XS or compilation.</blockquote>
+<blockquote>ZMQ::FFI exposes a high level, transparent, OO interface to zeromq independent of the underlying libzmq version. Where semantics differ, it will dispatch to the appropriate backend for you. As it uses ffi, there is no dependency on XS or compilation.</blockquote>
 
-What this means in practice is that it doesn't matter if you have zeromq 2/3/4installed, you can use the same consistent interface. To demonstrate this, aswell as ZMQ::FFI's basic usage, let's start with a simple send/recv example:
 
-<pre><code># sendrecv1.pl
+What this means in practice is that it doesn't matter if you have zeromq 2/3/4 installed; you can use the same consistent interface. To demonstrate this, as well as ZMQ::FFI's basic usage, let's start with a simple send/recv example:
 
-use v5.10;
-use ZMQ::FFI;
+<pre>sendrecv1.pl</pre>
+
+<pre><code>use ZMQ::FFI;
 use ZMQ::FFI::Constants qw(ZMQ_REQ ZMQ_REP);
 
 my $endpoint = "ipc://zmq-ffi-$$";
@@ -39,7 +35,8 @@ $req->send($version);
 say $rep->recv();
 </code></pre>
 
-Pretty basic: we setup a simple request/reply connection, send the libzmqversion string as the message, receive it, and print it.<code>$ctx->version()</code> returns a list of <code>($major, $minor, $patch)</code>,hence the <code>join</code>.
+Pretty basic: we setup a simple request/reply connection, send the libzmq version string as the message, receive it, and print it. <code>$ctx->version()</code> returns a list of
+<code>($major, $minor, $patch)</code> and hence the <code>join</code>.
 
 On my Arch Linux box with zeromq 4.0.3 installed I get:
 
@@ -49,7 +46,7 @@ On my Arch Linux box with zeromq 4.0.3 installed I get:
 
 As expected.
 
-Now what if an older libzmq version is installed? Say 2.x which has anincompatible ABI. I can simulate this by setting my LD_LIBRARY_PATH to thelocation on disk with the older .so:
+Now what if an older libzmq version is installed? Say 2.x which has an incompatible ABI. I can simulate this by setting my LD_LIBRARY_PATH to the location of the older .so:
 
 <pre>$ ls ~/git/zeromq2-x/src/.libs/libzmq.so*
 /home/calid/git/zeromq2-x/src/.libs/libzmq.so
@@ -60,14 +57,13 @@ $ perl sendrecv1.pl
 2.2.1
 </pre>
 
-Success. I was able to reuse the same code and ZMQ::FFI was able to gracefullyhandle the ABI differences between versions.
+Success. I was able to reuse the same code and ZMQ::FFI was able to gracefully handle the ABI differences between versions.
 
-It's important to point out that contexts are isolated from one another,ensuring that you can have multiple contexts in the same process. In fact, it'seven possible to have multiple contexts using different zeromq versions:
+It's important to point out that contexts are isolated from one another, ensuring you can have several in the same process without issue. In fact, it's even possible to create contexts using different zeromq versions:
 
-<pre><code>#sendrecv2.pl
+<pre>sendrecv2.pl</pre>
 
-use v5.10;
-use ZMQ::FFI;
+<pre><code>use ZMQ::FFI;
 use ZMQ::FFI::Constants qw(ZMQ_REQ ZMQ_REP);
 
 my $endpoint = "ipc://zmq-ffi-$$";
@@ -97,18 +93,25 @@ say join " ",
 4.0.3 context received message from 2.2.1 context
 </pre>
 
-Using the <code>soname</code> attribute I've explicitly indicated the libzmq.soI want to use to create each context. If the .so doesn't exist on your ld pathyou can reference it using an absolute path instead of manually setting theLD_LIBRARY_PATH env var. So in the example above if I change<code>libzmq.so.3</code> to<code>/home/calid/git/zeromq3-x/src/.libs/libzmq.so</code>, my output changesto:
+Using the <em>soname</em> attribute I've explicitly indicated the libzmq.so I want to use to create each context. If the .so doesn't already exist on your ld path manually adding it via LD_LIBRARY_PATH is one option, but you can also reference it directly using an absolute path. So in the example above if I change
+
+<pre><code>ZMQ::FFI->new( soname => 'libzmq.so.3' )</code></pre>
+
+to
+
+<pre><code>ZMQ::FFI->new( soname => '/home/calid/git/zeromq3-x/src/.libs/libzmq.so' )</code></pre>
+
+my output changes to:
 
 <pre>$ perl sendrecv2.pl
 3.2.5 context received message from 2.2.1 context
 </pre>
 
-Being able to set the soname is especially useful when you have parallel zeromqinstallations, all on your ld path. The first version found may not be theversion you actually want to use. By explicitly setting the soname you caneliminate any ambiguity.
+Being able to set the soname is especially useful when you have parallel zeromq installations, all on your ld path. The first version found may not be the one you actually want to use. By explicitly setting the soname you can eliminate any ambiguity.
 
-This extends to zeromq 3 vs zeromq 4 which have the same major soname(libzmq.so.3). The solution here is to specify the complete soname(major.minor.patch):
+This extends to zeromq 3 vs zeromq 4 which have the same major soname (libzmq.so.3). The solution here is to specify the complete soname, major.minor.patch:
 
-<pre><code>
-my $req_ctx = ZMQ::FFI->new( soname => 'libzmq.so.3.0.0' );
+<pre><code>my $req_ctx = ZMQ::FFI->new( soname => 'libzmq.so.3.0.0' );
 ...
 my $rep_ctx = ZMQ::FFI->new( soname => 'libzmq.so.3.1.0' );
 </code></pre>
@@ -117,5 +120,5 @@ my $rep_ctx = ZMQ::FFI->new( soname => 'libzmq.so.3.1.0' );
 4.0.3 context received message from 3.2.5 context
 </pre>
 
-The identical soname is because zeromq 4 has an ABI that is backward compatiblewith zeromq 3.
+The identical soname is a result of zeromq 4 having an ABI that is backward compatible with zeromq 3.
 
