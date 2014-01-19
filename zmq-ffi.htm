@@ -35,7 +35,7 @@ $req->send($version);
 say $rep->recv();
 </code></pre>
 
-Pretty basic: we setup a simple request/reply connection, send the libzmq version string as the message, receive it, and print it. <code>$ctx->version()</code> returns a list of
+Pretty basic: we setup a simple request/reply connection, send the zeromq version string as the message, receive it, and print it. <code>$ctx->version()</code> returns a list of
 <code>($major, $minor, $patch)</code> and hence the <code>join</code>.
 
 On my Arch Linux box with zeromq 4.0.3 installed I get:
@@ -59,7 +59,7 @@ $ perl sendrecv1.pl
 
 Success. I was able to reuse the same code and ZMQ::FFI was able to gracefully handle the ABI differences between versions.
 
-It's important to point out that contexts are isolated from one another, ensuring you can have several in the same process without issue. In fact, it's even possible to create contexts using different zeromq versions:
+It's important to point out that contexts are isolated from one another, ensuring you can have several in the same process. In fact, it's even possible to create contexts using different libzmq versions:
 
 <pre>sendrecv2.pl</pre>
 
@@ -121,4 +121,91 @@ my $rep_ctx = ZMQ::FFI->new( soname => 'libzmq.so.3.1.0' );
 </pre>
 
 The identical soname is a result of zeromq 4 having an ABI that is backward compatible with zeromq 3.
+
+<big><strong>nonblocking</strong></big>
+
+The above examples show how we can flexibly deal with different libzmq versions.  The zmq code itself is pretty trivial though. Let's do something a little more sophisticated and exercise the asynchronous nature of zeromq. ZMQ::FFI provides convenience functions that make nonblocking semantics natural. To demonstrate this we can integrate ZMQ::FFI with AnyEvent:
+
+<pre>nonblock1.pl</pre>
+
+<pre><code>use ZMQ::FFI;
+use ZMQ::FFI::Constants qw(ZMQ_PUSH ZMQ_PULL);
+
+use AnyEvent;
+use EV;
+
+my $endpoint = "ipc://zmq-ffi-$$";
+my $ctx      = ZMQ::FFI->new();
+
+my $push = $ctx->socket(ZMQ_PUSH);
+$push->connect($endpoint);
+
+my $pull = $ctx->socket(ZMQ_PULL);
+$pull->bind($endpoint);
+
+my $recvd = 0;
+my $w = AE::io $pull->get_fd, 0, sub {
+    while ($pull->has_pollin) {
+        print $pull->recv();
+
+        $recvd++;
+        if ( $recvd == 3 ) {
+            EV::unloop;
+            print "\n";
+        }
+        else {
+            print '.';
+        }
+    }
+};
+
+my $t = AE::timer 0, 0, sub {
+    $push->send($_) for $push->version;
+};
+
+EV::run;
+</code></pre>
+
+<pre>$ perl nonblock1.pl
+4.0.3
+</pre>
+
+We're still sending the zeromq version as the messsage, but how we're sending it is very different:
+
+<ul>
+    <li>Instead of request/reply we're using push/pull</li>
+    <li>The version parts are now being sent one at a time and joined on the receiving end</li>
+    <li>Rather than directly sending/receiving, we're doing these through an event loop (sending on a timer, polling and then receiving only when there's data)</li>
+</ul>
+
+Still, how we integrated with AnyEvent is the most important part:
+
+<ul>
+    <li>When setting up our io watcher we used the pull socket's <code>get_fd</code> method, which returns the underlying zmq file descriptor to poll on</li>
+    <li>In the watcher's callback we used the <code>has_pollin</code> method to guarantee we receive all the messages currently available on the socket</li>
+</ul>
+
+The second point is critical: By continuing to receive until <code>has_pollin</code> returns false, we ensure all outstanding zmq events on the socket have been exhausted. If we return control to the event loop without doing this the edge-triggered state of the zmq fd may not get reset. The consequence of leaving the zmq fd in an intermediate state is that it will not show as readable again, and your io callback will never fire.
+
+After all of that let's quickly prove we're still version agnostic:
+
+<pre>$ LD_LIBRARY_PATH=~/git/zeromq2-x/src/.libs/ perl nonblock1.pl
+2.2.1
+</pre>
+
+Still ok!
+
+<big><strong>Final points</strong></big>
+
+You may have noticed I never explicitly called close or destroy. This is because cleanup is handled automatically in the Moose DEMOLISH methods. The close/destroy methods do exist though, if for some reason you can't wait for the objects to get reaped.
+
+Likewise, I did no error checking. Error codes are checked for you, and if an error does occur ZMQ::FFI will raise an appropriate exception.
+
+
+I hope you've enjoyed this whirlwind introduction of ZMQ::FFI. Do let me know any feedback on the post or the module. I did not demo multipart messages or pub/sub, but you can find examples of these as well as more detailed documentation here:
+
+<ul>
+    <li><a href="https://github.com/calid/zmq-ffi">https://github.com/calid/zmq-ffi</a></li>
+    <li><a href="https://metacpan.org/pod/ZMQ::FFI">https://metacpan.org/pod/ZMQ::FFI</a></li>
+</ul>
 
