@@ -1,6 +1,9 @@
 #sendrecv1.pl
 
-use v5.10;
+use strict;
+use warnings;
+use feature 'say';
+
 use ZMQ::FFI;
 use ZMQ::FFI::Constants qw(ZMQ_REQ ZMQ_REP);
 
