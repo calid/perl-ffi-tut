@@ -2,15 +2,16 @@ use strict;
 use warnings;
 use FFI::Raw;
 
-# This example doesn't quite work yet
-# but this is the general idea for complex structs
-# (pointer to pointers)
+# the $strs aref can't be passed directly
+# otherwise they exist in a temporary scope
+# and the pointers will be to garbage memory
+my $strs = ["foo", "bar", "baz"];
 
-my ($n_strs, $strs) = pack_strs(["foo", "bar", "baz"]);
+my ($packed_n, $packed_strs) = pack_strs($strs);
 
 my $struct =
-    $strs   . # 8 bytes
-    $n_strs   # 4 bytes
+    $packed_strs . # 8 bytes
+    $packed_n      # 4 bytes
     ; # 12 bytes total
 
 my $struct_ptr = FFI::Raw::MemPtr->new_from_buf($struct, 12);
@@ -22,8 +23,6 @@ my $print_struct = FFI::Raw->new(
 );
 
 $print_struct->($struct_ptr);
-
-
 
 sub pack_strs {
     my $strs = shift;

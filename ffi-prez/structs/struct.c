@@ -10,6 +10,6 @@ void print_struct(struct data *d)
     puts("struct.strs:");
 
     for ( int i = 0; i < d->n_strs; i++ ) {
-        printf("\t%s\n", d->strs[i]);
+        printf("  %s\n", d->strs[i]);
     }
 }
