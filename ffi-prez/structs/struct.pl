@@ -2,6 +2,10 @@ use strict;
 use warnings;
 use FFI::Raw;
 
+# This example doesn't quite work yet
+# but this is the general idea for complex structs
+# (pointer to pointers)
+
 my ($n_strs, $strs) = pack_strs(["foo", "bar", "baz"]);
 
 my $struct =
