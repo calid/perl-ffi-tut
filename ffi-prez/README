@@ -1,0 +1,6 @@
+the C code can be compiled into the example shared libraries with:
+
+  gcc -std=c99 -fPIC -shared <name>.c -o lib<name>.so
+
+ensure your LD_LIBRARY_PATH is set to include the example directory
+(e.g. export LD_LIBRARY_PATH=.)
